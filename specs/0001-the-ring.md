@@ -51,6 +51,13 @@ cursor into the world. That is blitzkit spec 0025 and it is still a draft, so th
 game would have had to do the unprojection itself, in the wrong place. Holding
 reads the same way round and costs nothing.
 
+**Every press is a shot.** A click with no hold behind it sends the softest
+there is rather than nothing. A shot of nothing rolls nowhere and hands the turn
+straight back, which from the other side of the screen is the game ignoring you,
+and that is what it looked like the first time anyone played it. Anything you can
+press moves the marble, the way it does with a thumb. A shot pointing nowhere is
+still refused, because there is no such aim.
+
 The shot is over when every marble has stopped.
 
 **A marble is out when its middle leaves the ring**, not when it stops outside.
@@ -122,6 +129,11 @@ and it is written down here because this is where it was found.
 - The mouse turns it, and never off the table. — `carom_game::tests::the_mouse_turns_the_shot`
 - Holding the button winds it up, to the hardest and no further. — `carom_game::tests::holding_the_button_builds_the_shot`
 - Letting go takes the shot and unwinds it. — `carom_game::tests::letting_go_takes_the_shot`
+- A click with no hold behind it still shoots. — `carom_game::tests::a_click_with_no_hold_still_shoots`
+- A shot pointing nowhere, or at no speed at all, is refused. — `game::tests::a_shot_with_nothing_behind_it_is_not_a_shot`
+- The readout is cleared each frame rather than piling up. — `carom_game::tests::the_readout_does_not_pile_up`
+- R racks them again once the ring is empty. — `carom_game::tests::r_racks_them_again`
+- One shot reads as one shot, and two as two. — `carom_game::tests::one_shot_is_not_one_shots`
 - The readout's lines are evenly spaced. — `carom_game::tests::the_readout_lines_are_evenly_spaced`
 
 ### Verified by hand
@@ -141,6 +153,13 @@ and it is written down here because this is where it was found.
 - Marbles roll and slow to a stop rather than coasting on, and they stop in a
   time that feels like a table rather than like ice.
 - A marble rolling over the ring line is readable as out at the moment it crosses.
+
+**The readout is cleared every frame.** `blitzkit::start` resets the scene
+between frames and does not reset the text, so a game that pushes its readout and
+never clears it grows the text buffer by a line a frame. carom ran for a couple
+of minutes and wgpu killed it at 2.7 gigabytes. Every other game on the engine
+remembers; this one did not, and that is worth writing down because it is a trap
+rather than a mistake.
 
 ## Out of scope
 

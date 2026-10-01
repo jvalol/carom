@@ -9,6 +9,13 @@ use crate::ring::MARBLE_RADIUS;
 /// How hard the hardest shot is, in units a second.
 pub const HARDEST: f32 = 14.0;
 
+/// And the softest, which is what a click with no hold behind it sends.
+///
+/// Not nothing. A shot of nothing rolls nowhere and hands the turn straight
+/// back, and from the other side of the screen that is the game ignoring you.
+/// Anything you can press is a shot, the way it is with a thumb.
+pub const SOFTEST: f32 = HARDEST * 0.14;
+
 /// How slowly everything has to be going before a shot is over.
 ///
 /// Not zero: rolling resistance brings a marble to a dead stop but the last of

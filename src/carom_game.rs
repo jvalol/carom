@@ -153,6 +153,16 @@ impl Game for CaromGame {
         text_renderer: &mut TextRenderer,
         _sound_system: &SoundSystem,
     ) {
+        // the engine resets the scene between frames and does not reset this,
+        // so a readout pushed and never cleared grows by a line a frame until
+        // the text buffer is larger than the device will allocate. carom ran
+        // for a couple of minutes and wgpu killed it at 2.7 gigabytes.
+        // the engine resets the scene between frames and does not reset this,
+        // so a readout pushed and never cleared grows by a line a frame until
+        // the text buffer is larger than the device will allocate. carom ran
+        // for a couple of minutes and wgpu killed it at 2.7 gigabytes.
+        text_renderer.reset();
+
         let turn = (self.turning[1] as i32 - self.turning[0] as i32) as f32;
         self.aim += turn * TURN_PER_SECOND * dt;
 
@@ -281,7 +291,7 @@ impl Game for CaromGame {
         if input.is_pressed() {
             if self.run.phase() == Phase::Aiming {
                 self.charging = true;
-                self.power = 0.0;
+                self.power = shot::SOFTEST;
             }
             return;
         }
@@ -338,12 +348,37 @@ mod tests {
     }
 
     #[test]
+    fn a_click_with_no_hold_still_shoots() {
+        // it sent nothing, rolled nowhere and gave the turn straight back,
+        // which reads as the game ignoring you
+        let mut game = CaromGame::new();
+
+        game.process_mouse(MouseInput::new(
+            MouseButton::Left,
+            blitzkit::mouse::ButtonState::Pressed,
+        ));
+        game.process_mouse(MouseInput::new(
+            MouseButton::Left,
+            blitzkit::mouse::ButtonState::Released,
+        ));
+
+        assert_eq!(game.run.shots(), 1, "the click went nowhere");
+        assert_eq!(game.run.phase(), Phase::Rolling);
+        assert!(
+            game.run.bodies[0].velocity.length() >= shot::SOFTEST - 1e-5,
+            "it left at {}",
+            game.run.bodies[0].velocity.length()
+        );
+    }
+
+    #[test]
     fn holding_the_button_builds_the_shot() {
         let mut game = CaromGame::new();
         game.process_mouse(MouseInput::new(
             MouseButton::Left,
             blitzkit::mouse::ButtonState::Pressed,
         ));
+        let softest = game.power;
 
         let mut text = TextRenderer::new();
         let sound = SoundSystem::new();
@@ -352,7 +387,7 @@ mod tests {
             game.update(1.0 / 60.0, &mut geometry, &mut text, &sound);
         }
 
-        assert!(game.power > 0.0, "nothing built up");
+        assert!(game.power > softest, "nothing built up");
         assert!(game.power <= HARDEST, "it went past the hardest shot");
     }
 
@@ -370,6 +405,51 @@ mod tests {
         assert_eq!(game.run.phase(), Phase::Rolling);
         assert_eq!(game.run.shots(), 1);
         assert_eq!(game.power, 0.0, "the pull stayed wound up");
+    }
+
+    #[test]
+    fn the_readout_does_not_pile_up() {
+        // it did, by a line a frame, until the text buffer outgrew the device
+        let mut game = CaromGame::new();
+        let mut text = TextRenderer::new();
+        let sound = SoundSystem::new();
+        let mut geometry = Geometry::new();
+
+        game.update(1.0 / 60.0, &mut geometry, &mut text, &sound);
+        let after_one = text.render_texts.len();
+
+        for _ in 0..100 {
+            game.update(1.0 / 60.0, &mut geometry, &mut text, &sound);
+        }
+
+        assert_eq!(text.render_texts.len(), after_one, "the readout piled up");
+        assert!(after_one > 0, "nothing was drawn at all");
+    }
+
+    #[test]
+    fn r_racks_them_again() {
+        let mut game = CaromGame::new();
+
+        // clear the ring the short way, then let the step notice
+        game.run.shoot(game.way(), 1.0);
+        for marble in 0..MARBLES {
+            game.run.bodies[marble + 1].position = vec3(ring::RING_RADIUS * 3.0, 0.5, 0.0);
+            game.run.bodies[marble + 1].velocity = Vec3::ZERO;
+        }
+        game.run.bodies[0].velocity = Vec3::ZERO;
+        game.run.step(shot::STEP);
+
+        assert_eq!(game.run.phase(), Phase::Over, "the ring is not empty");
+
+        game.process_keyboard(KeyboardInput::new(
+            KeyboardKey::R,
+            KeyboardKeyState::Pressed,
+            false,
+        ));
+
+        assert_eq!(game.run.phase(), Phase::Aiming, "r did not rack them again");
+        assert_eq!(game.run.left(), MARBLES);
+        assert_eq!(game.run.shots(), 0);
     }
 
     #[test]

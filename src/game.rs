@@ -86,6 +86,13 @@ impl Run {
             return;
         }
 
+        // a click with no hold behind it is not a shot. It used to count as
+        // one, roll nowhere, and hand the turn straight back, which from the
+        // other side of the screen looks like the game ignoring you.
+        if speed < shot::STILL || way.length_squared() < 1e-6 {
+            return;
+        }
+
         self.bodies[SHOOTER].velocity = way.normalize_or_zero() * speed;
         self.bodies[SHOOTER].spin = Vec3::ZERO;
         self.shots += 1;
@@ -174,6 +181,20 @@ mod tests {
         }
 
         assert!(run.shots() >= 1);
+    }
+
+    #[test]
+    fn a_shot_with_nothing_behind_it_is_not_a_shot() {
+        let mut run = Run::new();
+
+        run.shoot(Vec3::NEG_Z, 0.0);
+
+        assert_eq!(run.shots(), 0, "a click with no hold cost a shot");
+        assert_eq!(run.phase(), Phase::Aiming, "it is still your turn");
+
+        run.shoot(Vec3::ZERO, 8.0);
+
+        assert_eq!(run.shots(), 0, "a shot pointing nowhere cost a shot");
     }
 
     #[test]
