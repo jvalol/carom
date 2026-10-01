@@ -35,7 +35,7 @@ pub const LONGEST: usize = (20.0 / STEP) as usize;
 /// What a marble is made of: glass on wood.
 pub const BOUNCE: f32 = 0.8;
 pub const GRIP: f32 = 0.4;
-pub const ROLLING: f32 = 0.24;
+pub const ROLLING: f32 = 0.5;
 
 /// What they weigh. A shooter is the same size and heavier, as a real one is.
 pub const MARBLE_MASS: f32 = 1.0;
@@ -238,5 +238,45 @@ mod tests {
         assert_eq!(way.y, 0.0);
         assert!((way.length() - 1.0).abs() < 1e-5);
         assert!(way.z < 0.0, "it points away from the middle");
+    }
+
+    #[test]
+    fn nothing_can_reach_the_edge() {
+        // straight off the line, away from the ring, at everything there is:
+        // the worst a shot can do and the one nothing had tried. The table was
+        // 30 and this runs to 26, so it went over the edge and fell, and a
+        // falling body is a body still moving.
+        for mass in [MARBLE_MASS, SHOOTER_MASS] {
+            let from = vec3(0.0, MARBLE_RADIUS, crate::ring::RING_RADIUS);
+            let mut bodies = [marble(from, mass).with_velocity(vec3(0.0, 0.0, HARDEST))];
+
+            let taken = settle(&mut bodies);
+            let ran = crate::ring::from_the_middle(bodies[0].position);
+
+            assert!(taken < LONGEST, "it never stopped");
+            assert!(
+                ran < crate::ring::TABLE_HALF * 0.75,
+                "it ran to {} on a table of {}",
+                ran,
+                crate::ring::TABLE_HALF
+            );
+            assert!(
+                bodies[0].position.y > 0.0,
+                "it fell off at {:?}",
+                bodies[0].position
+            );
+        }
+    }
+
+    #[test]
+    fn a_shot_that_goes_nowhere_still_ends_soon() {
+        // the longest a shot can take is the one that hits nothing, and it is
+        // what the player waits through
+        let from = vec3(0.0, MARBLE_RADIUS, crate::ring::RING_RADIUS);
+        let mut bodies = [marble(from, SHOOTER_MASS).with_velocity(vec3(0.0, 0.0, HARDEST))];
+
+        let seconds = settle(&mut bodies) as f32 * STEP;
+
+        assert!(seconds < 4.0, "it took {} seconds", seconds);
     }
 }

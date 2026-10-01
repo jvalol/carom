@@ -60,6 +60,22 @@ still refused, because there is no such aim.
 
 The shot is over when every marble has stopped.
 
+**A marble out of the ring is out of play.** It is won, it stays where it came to
+rest, and no later shot moves it. Left in play a later shot walks it further out,
+and a few of those put it over the edge of the table, where it falls for ever. A
+falling body is a body still moving, so the shot never ends and only the twenty
+second net stops it, with the mouse ignoring you for all of it.
+
+**The table is big enough that nothing can reach its edge.** The number comes
+from a test that shoots off the line away from the ring at everything there is,
+which is the worst a shot can do and the case nothing had tried. It was worked
+out by hand first and the hand was wrong by more than a factor of two: a full
+power shot runs about 33 units, not 19.
+
+**The longest shot is under three seconds**, and that is the one that hits
+nothing at all. It is also the thing the player waits through, so it has a test
+of its own rather than being whatever the other numbers happen to leave.
+
 **A marble is out when its middle leaves the ring**, not when it stops outside.
 A marble that rolls out and back in is out. The count is yours at that moment and
 nothing takes it back.
@@ -123,6 +139,9 @@ and it is written down here because this is where it was found.
 - One that stayed in keeps its place, which is the whole decision. — `game::tests::a_shooter_that_stayed_in_keeps_its_place`
 - Nothing can be shot while a shot is rolling. — `game::tests::a_shot_only_counts_while_aiming`
 - A hard shot at the rack empties some of the ring. — `game::tests::a_shot_knocks_something_out`
+- A whole run of shots never runs long, and nothing leaves the table. — `game::tests::a_whole_run_never_runs_long`
+- Nothing can reach the edge of the table, at any weight. — `shot::tests::nothing_can_reach_the_edge`
+- And the shot that hits nothing still ends soon. — `shot::tests::a_shot_that_goes_nowhere_still_ends_soon`
 - Clearing the ring ends the game. — `game::tests::an_empty_ring_is_the_end`
 - The score is the shots taken. — `game::tests::the_score_counts_shots`
 - The shot points where it is aimed, and opens across the ring. — `carom_game::tests::the_shot_points_where_it_is_aimed`

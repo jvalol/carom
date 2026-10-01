@@ -32,6 +32,9 @@ pub struct Run {
     phase: Phase,
     /// How many steps the shot now rolling has taken.
     rolled: usize,
+    /// Which bodies this shot moves. Fixed when the shot is taken, so a marble
+    /// that leaves the ring mid shot rolls out the way it would have.
+    playing: Vec<usize>,
 }
 
 impl Default for Run {
@@ -55,6 +58,7 @@ impl Run {
             shots: 0,
             phase: Phase::Aiming,
             rolled: 0,
+            playing: Vec::new(),
         }
     }
 
@@ -98,6 +102,16 @@ impl Run {
         self.shots += 1;
         self.phase = Phase::Rolling;
         self.rolled = 0;
+
+        // the shooter and whatever is still in the ring. A marble already won
+        // is out of play: left in, a later shot walks it further out, and a
+        // few of those put it over the edge of the table, where it falls for
+        // ever. A falling body is a moving body, so the shot never ends and
+        // only the twenty second net stops it. That is the half minute Jake
+        // waited for his shooter to come back to the line.
+        self.playing = std::iter::once(SHOOTER)
+            .chain((0..MARBLES).filter(|m| !self.out[*m]).map(|m| m + 1))
+            .collect();
     }
 
     /// One step of a rolling shot: move everything, write down what left the
@@ -107,7 +121,11 @@ impl Run {
             return;
         }
 
-        step(&mut self.bodies, &[ring::table()], shot::GRAVITY, dt);
+        let mut moving: Vec<Body> = self.playing.iter().map(|at| self.bodies[*at]).collect();
+        step(&mut moving, &[ring::table()], shot::GRAVITY, dt);
+        for (n, at) in self.playing.iter().enumerate() {
+            self.bodies[*at] = moving[n];
+        }
 
         // written down as it happens rather than at the end, or a marble that
         // rolls out and back in would never have been out
@@ -121,8 +139,16 @@ impl Run {
         // seconds and `shot::tests::no_shot_runs_for_ever` holds it to that;
         // this is here so a shot nobody foresaw cannot take the window with it.
         self.rolled += 1;
-        if !shot::nothing_is_moving(&self.bodies) && self.rolled < shot::LONGEST {
+        if !shot::nothing_is_moving(&moving) && self.rolled < shot::LONGEST {
             return;
+        }
+
+        // what is out has come to rest and is scenery from here
+        for marble in 0..MARBLES {
+            if self.out[marble] {
+                self.bodies[marble + 1].velocity = Vec3::ZERO;
+                self.bodies[marble + 1].spin = Vec3::ZERO;
+            }
         }
 
         // a shooter that left the ring loses the place it had
@@ -224,6 +250,52 @@ mod tests {
         run.step(shot::STEP);
 
         assert!(run.is_out(marble), "coming back in unwound it");
+    }
+
+    #[test]
+    fn a_whole_run_never_runs_long() {
+        // one shot settles fast. It was a run of them that did not: a marble
+        // already out stayed in play, and a later shot walked it further out
+        // until it went over the edge of the table and fell, which is a body
+        // still moving twenty seconds later.
+        let mut run = Run::new();
+
+        for shot_number in 0..40 {
+            if run.phase() == Phase::Over {
+                break;
+            }
+
+            // a different aim each time, so the shooter works its way round
+            let about = shot_number as f32 * 0.7;
+            let way = vec3(about.sin(), 0.0, about.cos());
+            run.shoot(way, shot::HARDEST);
+
+            let taken = settle(&mut run);
+
+            assert!(
+                taken < 1200,
+                "shot {} took {} steps ({:.1}s)",
+                shot_number,
+                taken,
+                taken as f32 * shot::STEP
+            );
+
+            for (n, body) in run.bodies.iter().enumerate() {
+                assert!(
+                    ring::from_the_middle(body.position) < ring::TABLE_HALF,
+                    "body {} left the table at {:?} on shot {}",
+                    n,
+                    body.position,
+                    shot_number
+                );
+                assert!(
+                    body.position.y > -1.0,
+                    "body {} fell off the table on shot {}",
+                    n,
+                    shot_number
+                );
+            }
+        }
     }
 
     #[test]

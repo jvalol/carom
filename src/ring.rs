@@ -25,12 +25,15 @@ pub const MARBLES: usize = ARM * 4 + 1;
 
 /// How big the table is, measured out from the middle.
 ///
-/// Wide enough that the hardest shot cannot put a marble over the edge: at
-/// `shot::ROLLING` a marble struck at `shot::HARDEST` runs out in about
-/// fourteen units, and it starts at most `RING_RADIUS` from the middle. A
+/// Wide enough that the hardest shot cannot put anything over the edge. A
 /// marble that leaves the table falls for ever, and a body still falling is a
-/// body still moving, so the shot would never end.
-pub const TABLE_HALF: f32 = 30.0;
+/// body still moving, so the shot runs until the twenty second net stops it:
+/// half a minute of staring at a table while the game ignores the mouse.
+///
+/// The number comes from `shot::tests::nothing_can_reach_the_edge`, which
+/// shoots off the line at full power and measures. It was worked out by hand
+/// before that, and the hand was wrong by more than a factor of two.
+pub const TABLE_HALF: f32 = 45.0;
 
 /// The table, a solid with its top at y zero.
 pub fn table() -> Aabb {
