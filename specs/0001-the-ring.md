@@ -41,15 +41,23 @@ than walled: nothing stops a marble leaving. Leaving is the point.
 each `MARBLE_RADIUS` and all the same mass. Your shooter is the same size and
 heavier, which is what a real shooter is.
 
-**A shot** is a direction and a speed. Moving the mouse turns it, and so do the
-left and right arrow keys for a finer aim. Holding the left button winds it up
-and letting go takes it, with the beads in front of the shooter showing how hard.
+**A shot** is a direction and a speed. **The shot points at wherever the cursor
+is on the table**, so you aim by pointing at the marble you want rather than by
+turning towards it. The left and right arrow keys turn it too, for a finer aim.
+Holding the left button winds it up and letting go takes it, with the beads in
+front of the shooter showing how hard.
 
-That is not quite what this spec first said. It said you set the speed by how far
-you drag, which wants the cursor's place on the table, which wants a ray from the
-cursor into the world. That is blitzkit spec 0025 and it is still a draft, so the
-game would have had to do the unprojection itself, in the wrong place. Holding
-reads the same way round and costs nothing.
+Pointing is blitzkit spec 0025, which was a draft when this game was built. The
+first version turned the shot by raw mouse motion instead, and it was wrong in
+two ways at once: raw motion keeps arriving when the cursor is off the window, so
+the shot went on turning while you were somewhere else, and a relative turn gives
+you no way to point at a particular marble, only to turn towards it and
+overshoot. 0025 is built now and this is its first use.
+
+**A cursor that is off the window points at nothing**, and the shot stays where
+it was. So does a cursor above the horizon, whose ray runs away from the table
+and never meets it. The engine answers either one rather than refusing to, and
+which of them means anything is this game's question.
 
 **Every press is a shot.** A click with no hold behind it sends the softest
 there is rather than nothing. A shot of nothing rolls nowhere and hands the turn
@@ -145,7 +153,9 @@ and it is written down here because this is where it was found.
 - Clearing the ring ends the game. — `game::tests::an_empty_ring_is_the_end`
 - The score is the shots taken. — `game::tests::the_score_counts_shots`
 - The shot points where it is aimed, and opens across the ring. — `carom_game::tests::the_shot_points_where_it_is_aimed`
-- The mouse turns it, and never off the table. — `carom_game::tests::the_mouse_turns_the_shot`
+- The cursor points the shot, and the window's sides aim to their own sides. — `carom_game::tests::the_cursor_points_the_shot`
+- A cursor off the window does not move it. — `carom_game::tests::a_cursor_off_the_window_does_not_move_the_shot`
+- Nor does one above the horizon, pointing at no table at all. — `carom_game::tests::a_cursor_above_the_horizon_points_at_nothing`
 - Holding the button winds it up, to the hardest and no further. — `carom_game::tests::holding_the_button_builds_the_shot`
 - Letting go takes the shot and unwinds it. — `carom_game::tests::letting_go_takes_the_shot`
 - A click with no hold behind it still shoots. — `carom_game::tests::a_click_with_no_hold_still_shoots`

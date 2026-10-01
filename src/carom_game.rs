@@ -25,7 +25,6 @@ const HUD_SIZE: f32 = 20.0;
 const HUD_APART: f32 = HUD_SIZE * 1.6;
 
 /// How fast the mouse and the arrow keys turn the shot.
-const TURN_PER_PIXEL: f32 = 0.004;
 const TURN_PER_SECOND: f32 = 1.6;
 
 /// How long holding the button takes to reach the hardest shot.
@@ -45,6 +44,23 @@ const MARBLE: Vec4 = vec4(0.62, 0.78, 0.92, 1.0);
 const GONE: Vec4 = vec4(0.42, 0.46, 0.50, 1.0);
 const SHOOTER_COLOR: Vec4 = vec4(0.96, 0.62, 0.20, 1.0);
 const PULL: Vec4 = vec4(1.0, 0.95, 0.75, 1.0);
+
+/// Where a cursor ray meets the table the marbles sit on.
+///
+/// Nothing when the ray runs away from the table or along it, which is a cursor
+/// above the horizon. The plane is the marbles' middles rather than the table
+/// top, so pointing at a marble aims at the marble rather than at its shadow.
+fn on_the_table(camera: &Camera, cursor: Vec2) -> Option<Vec3> {
+    let ray = camera.ray_through(cursor);
+
+    if ray.direction.y.abs() < 1e-6 {
+        return None;
+    }
+
+    let along = (MARBLE_RADIUS - ray.origin.y) / ray.direction.y;
+
+    (along > 0.0).then(|| ray.at(along))
+}
 
 /// "1 shot" and "2 shots". A count beside a word that only reads right at one
 /// of its values is the kind of thing nobody notices writing and everybody
@@ -66,6 +82,8 @@ pub struct CaromGame {
     charging: bool,
     /// Left and right, held.
     turning: [bool; 2],
+    /// Where the cursor is, in pixels, while it is over the window.
+    pointing: Option<Vec2>,
     sphere: Option<MeshId>,
     tile: Option<MeshId>,
     width: f32,
@@ -90,6 +108,7 @@ impl CaromGame {
             power: 0.0,
             charging: false,
             turning: [false; 2],
+            pointing: None,
             sphere: None,
             tile: None,
             width: 800.0,
@@ -191,6 +210,19 @@ impl Game for CaromGame {
     }
 
     fn draw(&mut self, scene: &mut Scene, camera: &mut Camera) {
+        // the camera first, so the ray the aim is taken from is this frame's
+        camera.position = EYE;
+        camera.target = Vec3::ZERO;
+
+        if let Some(cursor) = self.pointing {
+            if let Some(at) = on_the_table(camera, cursor) {
+                let way = shot::aim(self.run.shooter(), at);
+                if way != Vec3::ZERO {
+                    self.aim = way.x.atan2(way.z);
+                }
+            }
+        }
+
         let (Some(sphere), Some(tile)) = (self.sphere, self.tile) else {
             return;
         };
@@ -261,9 +293,6 @@ impl Game for CaromGame {
                 );
             }
         }
-
-        camera.position = EYE;
-        camera.target = Vec3::ZERO;
     }
 
     fn process_keyboard(&mut self, input: KeyboardInput) {
@@ -303,8 +332,16 @@ impl Game for CaromGame {
         }
     }
 
-    fn mouse_motion(&mut self, delta: Vec2) {
-        self.aim -= delta.x * TURN_PER_PIXEL;
+    /// The cursor moved, so the shot points at wherever it is on the table.
+    ///
+    /// Absolute, not a turn by however far the mouse went. Raw mouse motion
+    /// keeps arriving when the cursor is off the window, so the shot went on
+    /// turning while you were somewhere else, and nothing you could do with it
+    /// was pointing at a marble: only turning towards one and overshooting.
+    /// This only fires while the cursor is over the window, which is the whole
+    /// of that first problem.
+    fn cursor_moved(&mut self, position: Vec2) {
+        self.pointing = Some(position);
     }
 
     fn is_quitting(&self) -> bool {
@@ -336,15 +373,67 @@ mod tests {
         assert!(game.way().dot(toward_the_middle).abs() < 1e-5);
     }
 
+    /// Runs a frame's draw, which is where the aim is taken from the cursor.
+    fn aimed(game: &mut CaromGame, cursor: Vec2) -> Vec3 {
+        let mut scene = Scene::new();
+        let mut camera = Camera::new();
+
+        game.cursor_moved(cursor);
+        game.draw(&mut scene, &mut camera);
+
+        game.way()
+    }
+
     #[test]
-    fn the_mouse_turns_the_shot() {
+    fn the_cursor_points_the_shot() {
+        // absolute, not a turn by however far the mouse went. The default
+        // camera's viewport is one by one, so the middle of it is a half.
         let mut game = CaromGame::new();
-        let was = game.way();
 
-        game.mouse_motion(vec2(100.0, 0.0));
+        let middle = aimed(&mut game, vec2(0.5, 0.5));
+        let toward = shot::aim(game.run.shooter(), Vec3::ZERO);
 
-        assert!(game.way().dot(was) < 1.0, "the mouse did nothing");
-        assert_eq!(game.way().y, 0.0, "the shot left the table");
+        assert!(
+            middle.dot(toward) > 0.99,
+            "the middle of the window aims {:?}, not {:?}",
+            middle,
+            toward
+        );
+
+        let left = aimed(&mut game, vec2(0.2, 0.5));
+        let right = aimed(&mut game, vec2(0.8, 0.5));
+
+        assert!(left.x < middle.x, "left of the middle aimed right");
+        assert!(right.x > middle.x, "right of the middle aimed left");
+        assert_eq!(left.y, 0.0, "the shot left the table");
+    }
+
+    #[test]
+    fn a_cursor_off_the_window_does_not_move_the_shot() {
+        // it did: raw mouse motion keeps arriving when the cursor is somewhere
+        // else entirely, so the shot went on turning while you were not even
+        // looking at the game. cursor_moved only fires over the window, so
+        // the shot simply stays where it was pointed.
+        let mut game = CaromGame::new();
+        let was = aimed(&mut game, vec2(0.3, 0.5));
+
+        let mut scene = Scene::new();
+        let mut camera = Camera::new();
+        game.draw(&mut scene, &mut camera);
+
+        assert_eq!(game.way(), was, "the shot drifted with nothing pointing it");
+    }
+
+    #[test]
+    fn a_cursor_above_the_horizon_points_at_nothing() {
+        // a ray that runs away from the table never meets it, and the shot
+        // keeps whatever it had rather than taking a direction from nowhere
+        let mut game = CaromGame::new();
+        let was = aimed(&mut game, vec2(0.5, 0.5));
+
+        let after = aimed(&mut game, vec2(0.5, -4.0));
+
+        assert_eq!(after, was);
     }
 
     #[test]
