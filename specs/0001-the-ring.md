@@ -1,6 +1,6 @@
 # 0001 The ring
 
-**Status:** draft
+**Status:** implemented
 **Date:** 2026-10-01
 
 ## Goal
@@ -41,9 +41,17 @@ than walled: nothing stops a marble leaving. Leaving is the point.
 each `MARBLE_RADIUS` and all the same mass. Your shooter is the same size and
 heavier, which is what a real shooter is.
 
-**A shot** is a direction and a speed. You aim with the mouse along the table and
-set the speed with how far you drag, up to `HARDEST`. The shot is over when every
-marble has stopped.
+**A shot** is a direction and a speed. Moving the mouse turns it, and so do the
+left and right arrow keys for a finer aim. Holding the left button winds it up
+and letting go takes it, with the beads in front of the shooter showing how hard.
+
+That is not quite what this spec first said. It said you set the speed by how far
+you drag, which wants the cursor's place on the table, which wants a ray from the
+cursor into the world. That is blitzkit spec 0025 and it is still a draft, so the
+game would have had to do the unprojection itself, in the wrong place. Holding
+reads the same way round and costs nothing.
+
+The shot is over when every marble has stopped.
 
 **A marble is out when its middle leaves the ring**, not when it stops outside.
 A marble that rolls out and back in is out. The count is yours at that moment and
@@ -71,15 +79,22 @@ noticed. A game where everything is coasting cannot hide it: a shot would never
 end. So the engine gained a couple against the spin, off by default, and a
 marble here asks for it.
 
-**And possibly more than one pass over the pairs.** `physics::step` resolves each
-pair once per step, in index order, with no iteration. Two marbles is exact.
-Thirteen in a tight cross, struck hard, is a stack of simultaneous contacts
-resolved one at a time, and a single pass through them is an approximation that
-can leave marbles overlapping or send one through a gap it should not fit
-through. Whether it is good enough is a question the break shot answers, and it
-is the first thing to look at if the opening shot behaves oddly.
+**One pass over the pairs holds up.** `physics::step` resolves each pair once per
+step, in index order, with no iteration, and thirteen in a tight cross struck at
+`HARDEST` is a stack of simultaneous contacts resolved one at a time. It was the
+open question when this spec was written and the break answers it: the rack
+scatters, nothing ends up inside anything, and every shot settles in about five
+seconds. Nothing in the engine needed changing for it.
 
-This spec does not assume the answer. If one pass holds up, nothing changes.
+**But gravity has to stay near what the engine expects.** blitzkit's `SETTLES_AT`
+is a speed, 0.6, below which a bounce is dropped. Gravity puts `g * dt` back into
+a resting body every step, and at 24 units that is 0.2 a step, a third of the
+threshold: a marble came to rest and then sat trembling on the table for ever,
+and the shot never ended. At 12 it settles. Twelve is also plenty for a game
+played flat, since nothing here is ever more than a marble's width off the table.
+
+That is a real edge of spec 0030 rather than a number this game picked for feel,
+and it is written down here because this is where it was found.
 
 ## Acceptance criteria
 
@@ -88,19 +103,38 @@ This spec does not assume the answer. If one pass holds up, nothing changes.
 - And the two separate by about a right angle, which equal spheres do. — `shot::tests::they_part_at_a_right_angle`
 - A harder shot sends a marble further. — `shot::tests::harder_sends_it_further`
 - A marble whose middle leaves the ring is out. — `ring::tests::out_is_the_middle_leaving`
-- And stays out if it rolls back in. — `ring::tests::rolling_back_in_does_not_count`
+- Height is not distance: a marble in the air over the ring is still in it. — `ring::tests::height_is_not_distance`
 - A marble resting inside is not out. — `ring::tests::resting_inside_is_not_out`
-- The thirteen start inside the ring and clear of each other. — `ring::tests::the_cross_fits_in_the_ring`
+- The thirteen start inside the ring, clear of each other and of the line. — `ring::tests::the_cross_fits_in_the_ring`
+- You shoot from the line itself. — `ring::tests::you_shoot_from_the_line`
+- An aim stays on the table however it was taken. — `shot::tests::aiming_stays_on_the_table`
 - A shot ends when everything has stopped. — `shot::tests::a_shot_ends_when_nothing_is_moving`
-- And every shot ends, from any legal aim and power. — `shot::tests::no_shot_runs_for_ever`
-- A shooter that leaves the ring goes back to the edge. — `ring::tests::a_lost_shooter_starts_again_from_the_edge`
+- And every shot ends, from any aim, at full power, against the whole rack. — `shot::tests::no_shot_runs_for_ever`
+- A new run is a full ring and no shots. — `game::tests::a_new_run_is_a_full_ring`
+- Out is the moment the middle crosses, and coming back in does not unwind it. — `game::tests::rolling_back_in_does_not_count`
+- A shooter that leaves the ring goes back to the edge. — `game::tests::a_lost_shooter_starts_again_from_the_edge`
+- One that stayed in keeps its place, which is the whole decision. — `game::tests::a_shooter_that_stayed_in_keeps_its_place`
+- Nothing can be shot while a shot is rolling. — `game::tests::a_shot_only_counts_while_aiming`
+- A hard shot at the rack empties some of the ring. — `game::tests::a_shot_knocks_something_out`
 - Clearing the ring ends the game. — `game::tests::an_empty_ring_is_the_end`
 - The score is the shots taken. — `game::tests::the_score_counts_shots`
+- The shot points where it is aimed, and opens across the ring. — `carom_game::tests::the_shot_points_where_it_is_aimed`
+- The mouse turns it, and never off the table. — `carom_game::tests::the_mouse_turns_the_shot`
+- Holding the button winds it up, to the hardest and no further. — `carom_game::tests::holding_the_button_builds_the_shot`
+- Letting go takes the shot and unwinds it. — `carom_game::tests::letting_go_takes_the_shot`
+- The readout's lines are evenly spaced. — `carom_game::tests::the_readout_lines_are_evenly_spaced`
 
 ### Verified by hand
 
-- The break reads as a break: thirteen marbles scatter and none of them passes
-  through another or ends up inside another.
+- The break does not scatter, and that is right. Dead on into the near arm, the
+  impulse runs down the column the way a Newton's cradle does: the far marble
+  leaves the ring, the ones between it and the shooter barely move, and the
+  shooter is left wedged in the rack with a bad next shot. An angled shot is
+  what scatters. This spec said "thirteen marbles scatter" before anyone had
+  run it, and that was a guess.
+- None of them passes through another or ends up inside another.
+- The beads in front of the shooter grow as the shot winds up, so how hard it
+  will be is something you see rather than something you count.
 - A cut shot looks like a cut shot. This is the one that says whether the engine's
   impulse is right, because the right angle between the two paths is something
   anyone who has played knows by eye.
