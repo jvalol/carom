@@ -15,22 +15,22 @@ is a shot where one ball strikes another, which is the whole subject.
 ## Why this game exists
 
 Spec 0030 gave the engine spheres with mass, bounce, friction and spin, in two
-halves: a body against the static world, and a body against another body. marble
-uses the first half and only the first half. Nothing in its course moves, so the
-ball never meets another ball, and the second half ships untested by anything but
-its own unit tests.
+halves: a body against the static world, and a body against another. marble
+uses only the first. Nothing in its course moves, so the ball never meets
+another ball, and the second half ships untested by anything but its own unit
+tests.
 
 This is the game that is nothing but the second half. Every shot is one sphere
-striking another, and what the player is deciding is what that collision will do.
-A game whose whole subject is a function is how securitysweep was built and it is
-the pattern worth repeating: the rule can be checked without a window, and the
-check is of the same arithmetic the pixels come from.
+striking another, and what the player is deciding is what that collision will
+do. A game whose whole subject is a function is how securitysweep was built.
+The rule can be checked without a window, against the same arithmetic the
+pixels come from.
 
 **What it decides.** Aim and power, and then where your shooter is left. The
 greedy shot takes the marble nearest the edge and sends your shooter out after
-it; the careful one takes a marble further in and dies in the middle of the ring,
-with everything still to shoot at. That tension is the game. Without it this is
-an aiming exercise.
+it. The careful one takes a marble further in and dies in the middle, with
+everything still to shoot at. That tension is the game. Without it this is an
+aiming exercise.
 
 ## Behavior
 
@@ -48,11 +48,11 @@ Holding the left button winds it up and letting go takes it, with the beads in
 front of the shooter showing how hard.
 
 Pointing is blitzkit spec 0025, which was a draft when this game was built. The
-first version turned the shot by raw mouse motion instead, and it was wrong in
-two ways at once: raw motion keeps arriving when the cursor is off the window, so
-the shot went on turning while you were somewhere else, and a relative turn gives
-you no way to point at a particular marble, only to turn towards it and
-overshoot. 0025 is built now and this is its first use.
+first version turned the shot by raw mouse motion, and it was wrong twice over.
+Raw motion keeps arriving when the cursor is off the window, so the shot turned
+while you were somewhere else. And a relative turn cannot point at a marble,
+only turn towards it and overshoot. 0025 is built now and this is its first
+use.
 
 **A cursor that is off the window points at nothing**, and the shot stays where
 it was. So does a cursor above the horizon, whose ray runs away from the table
@@ -60,11 +60,10 @@ and never meets it. The engine answers either one rather than refusing to, and
 which of them means anything is this game's question.
 
 **Every press is a shot.** A click with no hold behind it sends the softest
-there is rather than nothing. A shot of nothing rolls nowhere and hands the turn
-straight back, which from the other side of the screen is the game ignoring you,
-and that is what it looked like the first time anyone played it. Anything you can
-press moves the marble, the way it does with a thumb. A shot pointing nowhere is
-still refused, because there is no such aim.
+there is rather than nothing. A shot of nothing rolls nowhere and hands the
+turn straight back, which from the other side of the screen is the game
+ignoring you. Anything you can press moves the marble, the way it does with a
+thumb. A shot pointing nowhere is still refused, because there is no such aim.
 
 The shot is over when every marble has stopped.
 
@@ -103,12 +102,11 @@ that moves a marble is being hit, and the only thing that stops one is the table
 
 **Rolling resistance, which is blitzkit spec 0031 and exists because of this.**
 Friction in spec 0030 acts on the velocity at the contact point, and a ball
-rolling without slipping has none there, so no impulse was applied and it rolled
-for ever. marble hid that behind its own coast friction, which is a drive model
-rather than a property of the ball, and it hid it well enough that nobody
-noticed. A game where everything is coasting cannot hide it: a shot would never
-end. So the engine gained a couple against the spin, off by default, and a
-marble here asks for it.
+rolling without slipping has none there, so no impulse was applied and it
+rolled for ever. marble hid that behind its own coast friction, a drive model
+rather than a property of the ball. A game where everything is coasting cannot
+hide it: a shot would never end. So the engine gained a couple against the
+spin, off by default, and a marble here asks for it.
 
 **One pass over the pairs holds up.** `physics::step` resolves each pair once per
 step, in index order, with no iteration, and thirteen in a tight cross struck at
@@ -117,12 +115,12 @@ open question when this spec was written and the break answers it: the rack
 scatters, nothing ends up inside anything, and every shot settles in about five
 seconds. Nothing in the engine needed changing for it.
 
-**But gravity has to stay near what the engine expects.** blitzkit's `SETTLES_AT`
-is a speed, 0.6, below which a bounce is dropped. Gravity puts `g * dt` back into
-a resting body every step, and at 24 units that is 0.2 a step, a third of the
-threshold: a marble came to rest and then sat trembling on the table for ever,
-and the shot never ended. At 12 it settles. Twelve is also plenty for a game
-played flat, since nothing here is ever more than a marble's width off the table.
+**But gravity has to stay near what the engine expects.** blitzkit's
+`SETTLES_AT` is a speed, 0.6, below which a bounce is dropped. Gravity puts `g
+* dt` back into a resting body every step, and at 24 units that is 0.2, a third
+of the threshold. A marble came to rest and then sat trembling for ever, and
+the shot never ended. At 12 it settles. Twelve is also plenty for a game played
+flat, since nothing here is ever more than a marble's width off the table.
 
 That is a real edge of spec 0030 rather than a number this game picked for feel,
 and it is written down here because this is where it was found.
@@ -168,27 +166,25 @@ and it is written down here because this is where it was found.
 ### Verified by hand
 
 - The break does not scatter, and that is right. Dead on into the near arm, the
-  impulse runs down the column the way a Newton's cradle does: the far marble
-  leaves the ring, the ones between it and the shooter barely move, and the
-  shooter is left wedged in the rack with a bad next shot. An angled shot is
-  what scatters. This spec said "thirteen marbles scatter" before anyone had
-  run it, and that was a guess.
-- None of them passes through another or ends up inside another.
-- The beads in front of the shooter grow as the shot winds up, so how hard it
-  will be is something you see rather than something you count.
-- A cut shot looks like a cut shot. This is the one that says whether the engine's
-  impulse is right, because the right angle between the two paths is something
-  anyone who has played knows by eye.
-- Marbles roll and slow to a stop rather than coasting on, and they stop in a
-  time that feels like a table rather than like ice.
-- A marble rolling over the ring line is readable as out at the moment it crosses.
+impulse runs down the column the way a Newton's cradle does. The far marble
+leaves the ring, the ones between barely move, and the shooter is left wedged
+in the rack. An angled shot is what scatters. This spec said "thirteen marbles
+scatter" before anyone had run it, and that was a guess. - None of them passes
+through another or ends up inside another. - The beads in front of the shooter
+grow as the shot winds up, so how hard it will be is something you see rather
+than something you count. - A cut shot looks like a cut shot. This is the one
+that says whether the engine's impulse is right, because the right angle
+between the two paths is something anyone who has played knows by eye. -
+Marbles roll and slow to a stop rather than coasting on, and they stop in a
+time that feels like a table rather than like ice. - A marble rolling over the
+ring line is readable as out at the moment it crosses.
 
 **The readout is cleared every frame.** `blitzkit::start` resets the scene
-between frames and does not reset the text, so a game that pushes its readout and
-never clears it grows the text buffer by a line a frame. carom ran for a couple
-of minutes and wgpu killed it at 2.7 gigabytes. Every other game on the engine
-remembers; this one did not, and that is worth writing down because it is a trap
-rather than a mistake.
+between frames and does not reset the text, so a game that pushes its readout
+and never clears it grows the buffer by a line a frame. carom ran a couple of
+minutes and wgpu killed it at 2.7 gigabytes. Every other game on the engine
+remembers; this one did not, and that is worth writing down because it is a
+trap rather than a mistake.
 
 ## Out of scope
 

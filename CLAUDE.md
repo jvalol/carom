@@ -42,10 +42,10 @@ only the first half, because nothing in its course moves and the ball never meet
 another ball. The second half ships tested by nothing but its own unit tests.
 
 This game is nothing but the second half. Every shot is one sphere striking
-another, and what the player decides is what that collision will do. securitysweep
-was built the same way, around three engine functions, and the pattern is worth
-repeating: the rule can be checked without a window, and the check is of the same
-arithmetic the pixels come from.
+another, and what the player decides is what that collision will do.
+securitysweep was built the same way, around three engine functions. The rule
+can be checked without a window, against the same arithmetic the pixels come
+from.
 
 ## Why the shooter sticks where it stops
 
@@ -56,9 +56,8 @@ That tension is the game.
 
 ## Why it waited for spec 0031
 
-Spec 0030's friction acts on the velocity at the point of contact, and a ball
+Spec 0030's friction acts on the velocity at the contact point, and a ball
 rolling without slipping has none there, so nothing slowed a roll and a shot
 would never have ended. marble hid that behind its own coast friction, which
-belongs to its drive model rather than to the ball. This game could not borrow
-it, so the engine gained rolling resistance, off by default, and a marble here
-asks for it.
+belongs to its drive model. This game could not borrow it, so the engine gained
+rolling resistance, off by default, and a marble here asks for it.
