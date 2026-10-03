@@ -176,10 +176,6 @@ impl Game for CaromGame {
         // so a readout pushed and never cleared grows by a line a frame until
         // the text buffer is larger than the device will allocate. carom ran
         // for a couple of minutes and wgpu killed it at 2.7 gigabytes.
-        // the engine resets the scene between frames and does not reset this,
-        // so a readout pushed and never cleared grows by a line a frame until
-        // the text buffer is larger than the device will allocate. carom ran
-        // for a couple of minutes and wgpu killed it at 2.7 gigabytes.
         text_renderer.reset();
 
         let turn = (self.turning[1] as i32 - self.turning[0] as i32) as f32;
