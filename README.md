@@ -10,3 +10,7 @@ Why carom? I didn't know either, but learning is part of the joy. Carom means to
 ```
 cargo run
 ```
+
+---
+
+I asked AI to draft this for me. I've edited it. Any surviving AI smells are my oversight.

@@ -9,3 +9,7 @@ not a priority, and it never changes once a spec exists.
 | Spec | Covers |
 | --- | --- |
 | [0001](0001-the-ring.md) | The ring, the thirteen, and the shot |
+
+---
+
+I asked AI to draft this for me. I've edited it. Any surviving AI smells are my oversight.
