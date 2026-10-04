@@ -88,6 +88,15 @@ pub struct CaromGame {
     tile: Option<MeshId>,
     width: f32,
     quitting: bool,
+    /// Whether this run is only here to be photographed, and whether the shot
+    /// has been taken. See `refresh-screenshots` in the project above.
+    ///
+    /// The opening frame is thirteen marbles racked in a cross and nothing
+    /// having happened, which is a photograph of a setup. A staged run takes a
+    /// shot and lets it settle, which is the game: a scattered ring with a
+    /// marble out of it.
+    staged: bool,
+    shot_taken: bool,
 }
 
 impl Default for CaromGame {
@@ -113,6 +122,39 @@ impl CaromGame {
             tile: None,
             width: 800.0,
             quitting: false,
+            staged: crate::staged(),
+            shot_taken: false,
+        }
+    }
+
+    /// How hard the staged shot is and how far off the middle it points.
+    ///
+    /// Dead on into the near arm does not scatter: the impulse runs down the
+    /// column like a Newton's cradle, the far marble leaves and the ones
+    /// between barely move. An angled shot is what scatters, which is spec
+    /// 0001's own hand check and the picture worth taking.
+    /// Measured over power and angle rather than picked: at seven tenths and
+    /// a fifth of a radian the rack barely moved and all thirteen stayed in.
+    /// Full power at 0.45 is the one that scatters and puts two out.
+    const POSED_POWER: f32 = HARDEST;
+    const POSED_OFF: f32 = 0.45;
+    const POSED_SETTLES_FOR: f32 = 8.0;
+
+    /// Takes a shot for the camera and lets it come to rest. See
+    /// `refresh-screenshots`.
+    ///
+    /// On the first frame rather than over six real seconds, because the
+    /// shutter is on a timer and will not wait for the marbles to stop.
+    fn pose(&mut self) {
+        self.shot_taken = true;
+        self.aim += Self::POSED_OFF;
+        self.run.shoot(self.way(), Self::POSED_POWER);
+
+        let step = 1.0 / 120.0;
+        let mut at = 0.0;
+        while at < Self::POSED_SETTLES_FOR {
+            self.run.step(step);
+            at += step;
         }
     }
 
@@ -177,6 +219,22 @@ impl Game for CaromGame {
         // the text buffer is larger than the device will allocate. carom ran
         // for a couple of minutes and wgpu killed it at 2.7 gigabytes.
         text_renderer.reset();
+
+        if self.staged {
+            if !self.shot_taken {
+                self.pose();
+            }
+            for (n, text) in self.readout().into_iter().enumerate() {
+                text_renderer.push_render_text(RenderText {
+                    position: self.line(n),
+                    color: vec4(1.0, 1.0, 1.0, 0.9),
+                    size: HUD_SIZE,
+                    text,
+                    ..Default::default()
+                });
+            }
+            return;
+        }
 
         let turn = (self.turning[1] as i32 - self.turning[0] as i32) as f32;
         self.aim += turn * TURN_PER_SECOND * dt;

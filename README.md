@@ -2,6 +2,8 @@
 
 Shoot at thirteen marbles with _your_ marble. It's basically shooting marbles. Just on a computer.
 
+![A ring drawn on a green table with thirteen pale marbles racked in a cross inside it, an amber shooter against the near arm, and one grey marble come to rest outside the ring](media/screenshot.png)
+
 Built on [blitzkit](https://github.com/jvalol/blitzkit), the ninth game on that
 engine. It's the first where one body with rotation, friction, momentum, etc. meets another.
 
