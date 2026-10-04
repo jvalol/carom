@@ -166,18 +166,20 @@ and it is written down here because this is where it was found.
 ### Verified by hand
 
 - The break does not scatter, and that is right. Dead on into the near arm, the
-impulse runs down the column the way a Newton's cradle does. The far marble
-leaves the ring, the ones between barely move, and the shooter is left wedged
-in the rack. An angled shot is what scatters. This spec said "thirteen marbles
-scatter" before anyone had run it, and that was a guess. - None of them passes
-through another or ends up inside another. - The beads in front of the shooter
-grow as the shot winds up, so how hard it will be is something you see rather
-than something you count. - A cut shot looks like a cut shot. This is the one
-that says whether the engine's impulse is right, because the right angle
-between the two paths is something anyone who has played knows by eye. -
-Marbles roll and slow to a stop rather than coasting on, and they stop in a
-time that feels like a table rather than like ice. - A marble rolling over the
-ring line is readable as out at the moment it crosses.
+  impulse runs down the column the way a Newton's cradle does. The far marble
+  leaves the ring, the ones between barely move, and the shooter is left wedged
+  in the rack. An angled shot is what scatters. This spec said "thirteen
+  marbles scatter" before anyone had run it, and that was a guess.
+- None of them passes through another or ends up inside another.
+- The beads in front of the shooter grow as the shot winds up, so how hard it
+  will be is something you see rather than something you count.
+- A cut shot looks like a cut shot. This is the one that says whether the
+  engine's impulse is right, because the right angle between the two paths is
+  something anyone who has played knows by eye.
+- Marbles roll and slow to a stop rather than coasting on, and they stop in a
+  time that feels like a table rather than like ice.
+- A marble rolling over the ring line is readable as out at the moment it
+  crosses.
 
 **The readout is cleared every frame.** `blitzkit::start` resets the scene
 between frames and does not reset the text, so a game that pushes its readout
