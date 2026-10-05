@@ -6,6 +6,7 @@ use blitzkit::geometry::Geometry;
 use blitzkit::keyboard::{KeyboardInput, KeyboardKey, KeyboardKeyState};
 use blitzkit::mesh::{MeshData, Transform};
 use blitzkit::mouse::{MouseButton, MouseInput};
+use blitzkit::notice;
 use blitzkit::renderer::render_text::{RenderText, TextRenderer};
 use blitzkit::renderer::scene::{MeshId, Scene};
 use blitzkit::renderer::Renderer;
@@ -167,6 +168,37 @@ impl CaromGame {
         vec2(HUD_LEFT, HUD_TOP + n as f32 * HUD_APART)
     }
 
+    /// The readout, on a panel. White on a lit table is white on whatever the
+    /// table happens to be showing, so the lines get something to sit on.
+    /// See blitzkit's spec 0038.
+    fn say(&self, geometry: &mut Geometry, text_renderer: &mut TextRenderer) {
+        let lines: Vec<RenderText> = self
+            .readout()
+            .into_iter()
+            .enumerate()
+            .map(|(n, text)| RenderText {
+                position: self.line(n),
+                color: vec4(1.0, 1.0, 1.0, 0.9),
+                size: HUD_SIZE,
+                text,
+                ..Default::default()
+            })
+            .collect();
+
+        // nothing else here draws in 2D, and the engine does not clear this
+        // between frames
+        geometry.reset();
+        if let Some(frame) = notice::framing_all(&lines) {
+            for quad in frame.iter() {
+                geometry.push_quad(quad);
+            }
+        }
+
+        for line in lines {
+            text_renderer.push_render_text(line);
+        }
+    }
+
     fn readout(&self) -> Vec<String> {
         match self.run.phase() {
             Phase::Over => vec![
@@ -210,7 +242,7 @@ impl Game for CaromGame {
     fn update(
         &mut self,
         dt: f32,
-        _geometry: &mut Geometry,
+        geometry: &mut Geometry,
         text_renderer: &mut TextRenderer,
         _sound_system: &SoundSystem,
     ) {
@@ -224,15 +256,7 @@ impl Game for CaromGame {
             if !self.shot_taken {
                 self.pose();
             }
-            for (n, text) in self.readout().into_iter().enumerate() {
-                text_renderer.push_render_text(RenderText {
-                    position: self.line(n),
-                    color: vec4(1.0, 1.0, 1.0, 0.9),
-                    size: HUD_SIZE,
-                    text,
-                    ..Default::default()
-                });
-            }
+            self.say(geometry, text_renderer);
             return;
         }
 
@@ -252,15 +276,7 @@ impl Game for CaromGame {
             }
         }
 
-        for (n, text) in self.readout().into_iter().enumerate() {
-            text_renderer.push_render_text(RenderText {
-                position: self.line(n),
-                color: vec4(1.0, 1.0, 1.0, 0.9),
-                size: HUD_SIZE,
-                text,
-                ..Default::default()
-            });
-        }
+        self.say(geometry, text_renderer);
     }
 
     fn draw(&mut self, scene: &mut Scene, camera: &mut Camera) {
