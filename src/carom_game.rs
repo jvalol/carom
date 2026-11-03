@@ -102,12 +102,16 @@ pub struct CaromGame {
 
 impl Default for CaromGame {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
 impl CaromGame {
-    pub fn new() -> Self {
+    /// `staged` rather than a call to `crate::staged()`, so that a picture
+    /// test can ask for the photographed state without putting
+    /// `--screenshot` in its own arguments. `main` passes what the
+    /// arguments say.
+    pub fn new(staged: bool) -> Self {
         // opening aim: across the ring from where you stand, which is the only
         // shot that is obviously worth taking before you know the rack
         let opening = shot::aim(crate::ring::shoot_from(), Vec3::ZERO);
@@ -123,7 +127,7 @@ impl CaromGame {
             tile: None,
             width: 800.0,
             quitting: false,
-            staged: crate::staged(),
+            staged,
             shot_taken: false,
         }
     }
@@ -426,9 +430,48 @@ mod tests {
     use super::*;
     use crate::ring;
 
+    /// How big the picture is: the engine's own size, said once there and
+    /// read here, per its spec 0062.
+    const WIDE: u32 = blitzkit::picture::SIZE.0;
+    const TALL: u32 = blitzkit::picture::SIZE.1;
+
+    /// The ring after the shot, held against a picture of one. Spec 0002.
+    ///
+    /// **The staging was already here.** `--screenshot` takes the shot at
+    /// full power a fifth of a radian off the middle and lets it settle for
+    /// eight seconds, which is the frame `refresh-screenshots` photographs
+    /// for the readme: a rack nobody has broken is a photograph of a setup.
+    /// So this holds the picture that is already on show.
+    ///
+    /// One `update` and no more, because that is what takes the shot. The
+    /// pose settles the marbles on its own clock, and a second call would
+    /// find `shot_taken` already set and do nothing. The dt is nought, so
+    /// nothing moves between the staging and the shutter.
+    #[test]
+    fn the_ring_after_the_shot_looks_right() {
+        let reference = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/pictures/after-the-shot.png");
+
+        blitzkit::picture::drawn_looks_right(&reference, (WIDE, TALL), |renderer| {
+            let mut game = CaromGame::new(true);
+            let mut geometry = Geometry::new();
+            let mut text = TextRenderer::new();
+            let sound = SoundSystem::new();
+            let mut scene = Scene::new();
+            let mut camera = Camera::new();
+
+            game.load(renderer);
+            game.initialize(&mut geometry, &mut text, &sound, (WIDE as f32, TALL as f32));
+            game.update(0.0, &mut geometry, &mut text, &sound);
+            game.draw(&mut scene, &mut camera);
+
+            (scene, camera)
+        });
+    }
+
     #[test]
     fn the_shot_points_where_it_is_aimed() {
-        let mut game = CaromGame::new();
+        let mut game = CaromGame::new(false);
 
         // the shooter starts on the far z edge, so the opening aim crosses the
         // ring rather than leaving it
@@ -458,7 +501,7 @@ mod tests {
     fn the_cursor_points_the_shot() {
         // absolute, not a turn by however far the mouse went. The default
         // camera's viewport is one by one, so the middle of it is a half.
-        let mut game = CaromGame::new();
+        let mut game = CaromGame::new(false);
 
         let middle = aimed(&mut game, vec2(0.5, 0.5));
         let toward = shot::aim(game.run.shooter(), Vec3::ZERO);
@@ -484,7 +527,7 @@ mod tests {
         // else entirely, so the shot went on turning while you were not even
         // looking at the game. cursor_moved only fires over the window, so
         // the shot simply stays where it was pointed.
-        let mut game = CaromGame::new();
+        let mut game = CaromGame::new(false);
         let was = aimed(&mut game, vec2(0.3, 0.5));
 
         let mut scene = Scene::new();
@@ -498,7 +541,7 @@ mod tests {
     fn a_cursor_above_the_horizon_points_at_nothing() {
         // a ray that runs away from the table never meets it, and the shot
         // keeps whatever it had rather than taking a direction from nowhere
-        let mut game = CaromGame::new();
+        let mut game = CaromGame::new(false);
         let was = aimed(&mut game, vec2(0.5, 0.5));
 
         let after = aimed(&mut game, vec2(0.5, -4.0));
@@ -510,7 +553,7 @@ mod tests {
     fn a_click_with_no_hold_still_shoots() {
         // it sent nothing, rolled nowhere and gave the turn straight back,
         // which reads as the game ignoring you
-        let mut game = CaromGame::new();
+        let mut game = CaromGame::new(false);
 
         game.process_mouse(MouseInput::new(
             MouseButton::Left,
@@ -532,7 +575,7 @@ mod tests {
 
     #[test]
     fn holding_the_button_builds_the_shot() {
-        let mut game = CaromGame::new();
+        let mut game = CaromGame::new(false);
         game.process_mouse(MouseInput::new(
             MouseButton::Left,
             blitzkit::mouse::ButtonState::Pressed,
@@ -552,7 +595,7 @@ mod tests {
 
     #[test]
     fn letting_go_takes_the_shot() {
-        let mut game = CaromGame::new();
+        let mut game = CaromGame::new(false);
         game.charging = true;
         game.power = HARDEST;
 
@@ -569,7 +612,7 @@ mod tests {
     #[test]
     fn the_readout_does_not_pile_up() {
         // it did, by a line a frame, until the text buffer outgrew the device
-        let mut game = CaromGame::new();
+        let mut game = CaromGame::new(false);
         let mut text = TextRenderer::new();
         let sound = SoundSystem::new();
         let mut geometry = Geometry::new();
@@ -587,7 +630,7 @@ mod tests {
 
     #[test]
     fn r_racks_them_again() {
-        let mut game = CaromGame::new();
+        let mut game = CaromGame::new(false);
 
         // clear the ring the short way, then let the step notice
         game.run.shoot(game.way(), 1.0);
@@ -620,7 +663,7 @@ mod tests {
 
     #[test]
     fn the_readout_lines_are_evenly_spaced() {
-        let game = CaromGame::new();
+        let game = CaromGame::new(false);
         let lines: Vec<Vec2> = (0..game.readout().len()).map(|n| game.line(n)).collect();
 
         for pair in lines.windows(2) {

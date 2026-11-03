@@ -15,5 +15,5 @@ pub fn staged() -> bool {
 }
 
 fn main() {
-    start("carom", Box::new(CaromGame::new()));
+    start("carom", Box::new(CaromGame::new(staged())));
 }
