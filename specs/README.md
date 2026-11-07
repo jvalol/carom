@@ -10,7 +10,3 @@ not a priority, and it never changes once a spec exists.
 | --- | --- |
 | [0001](0001-the-ring.md) | The ring, the thirteen, and the shot |
 | [0002](0002-a-picture-of-the-ring-after-the-shot.md) | The staged shot held against a picture of it, through the engine's harness |
-
----
-
-I asked AI to draft this for me. I've edited it. Any surviving AI smells are my oversight.
